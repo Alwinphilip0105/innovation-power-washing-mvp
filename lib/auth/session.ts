@@ -41,7 +41,9 @@ function secret(): string {
   if (!globalRef.__ipwAuthSecret) {
     if (isProduction) {
       globalRef.__ipwAuthSecret = randomBytes(32).toString("hex");
-      logger.warn("AUTH_SECRET is not set - sessions will not survive a restart", {
+      // An error, not a warning: on a serverless host this signs every user out
+      // as soon as a request lands on a different instance.
+      logger.error("AUTH_SECRET is not set - sessions will not survive a restart", {
         event: "auth.config",
         production: true,
       });
