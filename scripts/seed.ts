@@ -15,6 +15,16 @@ import { createClient } from "@supabase/supabase-js";
 
 import { buildSeedData } from "../lib/db/seed";
 
+// Next.js loads .env.local for the app, but this script runs under plain Node,
+// which does not. Load it here so `npm run db:seed` works with no extra flags.
+for (const file of [".env.local", ".env"]) {
+  try {
+    process.loadEnvFile(file);
+  } catch {
+    // Missing file is fine - the variables may come from the shell instead.
+  }
+}
+
 const url = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
