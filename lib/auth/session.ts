@@ -1,6 +1,6 @@
 import "server-only";
 
-import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
 
 import { env, isProduction } from "@/lib/env";
@@ -19,18 +19,41 @@ export interface SessionPayload {
 
 const globalRef = globalThis as unknown as { __ipwAuthSecret?: string };
 
+/**
+ * The key that signs the session cookie.
+ *
+ * With `AUTH_SECRET` set, that is the key - the only correct configuration for
+ * a deployment. Without it the fallback differs by environment on purpose:
+ *
+ *   production  - a per-process random key. Sessions die on restart, which is
+ *                 the right failure mode: a missing secret must not silently
+ *                 become a predictable one.
+ *   development - a key derived from the project path. Stable across the worker
+ *                 restarts that Next performs while compiling routes, so you are
+ *                 not signed out mid-click, and still distinct per checkout.
+ *                 A dev server is localhost-only, so a derivable key costs
+ *                 nothing there; being randomly signed out costs an hour of
+ *                 debugging, as it did here.
+ */
 function secret(): string {
   if (env.AUTH_SECRET) return env.AUTH_SECRET;
 
   if (!globalRef.__ipwAuthSecret) {
-    // No configured secret: use a per-process random one rather than a
-    // predictable default. Sessions do not survive a restart, which is the
-    // correct failure mode for a missing secret.
-    globalRef.__ipwAuthSecret = randomBytes(32).toString("hex");
-    logger.warn("AUTH_SECRET is not set - sessions will not survive a restart", {
-      event: "auth.config",
-      production: isProduction,
-    });
+    if (isProduction) {
+      globalRef.__ipwAuthSecret = randomBytes(32).toString("hex");
+      logger.warn("AUTH_SECRET is not set - sessions will not survive a restart", {
+        event: "auth.config",
+        production: true,
+      });
+    } else {
+      globalRef.__ipwAuthSecret = createHash("sha256")
+        .update(`ipw-dev-session-key:${process.cwd()}`)
+        .digest("hex");
+      logger.warn("AUTH_SECRET is not set - using a derived development key", {
+        event: "auth.config",
+        production: false,
+      });
+    }
   }
   return globalRef.__ipwAuthSecret;
 }
