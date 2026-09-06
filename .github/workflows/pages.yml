@@ -35,22 +35,27 @@ jobs:
         id: site
         run: |
           set -euo pipefail
-          # A project site lives under /<repo>; a <user>.github.io repo and a
-          # custom domain both live at the root and take no base path.
-          custom='${{ vars.PAGES_URL }}'
           owner="$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')"
           repo='${{ github.event.repository.name }}'
 
-          if [ -n "$custom" ]; then
-            echo "app_url=${custom%/}" >> "$GITHUB_OUTPUT"
-            echo "base_path=" >> "$GITHUB_OUTPUT"
-          elif [ "$(echo "$repo" | tr '[:upper:]' '[:lower:]')" = "${owner}.github.io" ]; then
-            echo "app_url=https://${owner}.github.io" >> "$GITHUB_OUTPUT"
-            echo "base_path=" >> "$GITHUB_OUTPUT"
+          # The base path depends only on whether this is the account's user
+          # site. A custom domain does NOT move a project site to the root: it
+          # still serves from /<repo>, so this is decided before the domain is.
+          if [ "$(echo "$repo" | tr '[:upper:]' '[:lower:]')" = "${owner}.github.io" ]; then
+            base_path=""
           else
-            echo "app_url=https://${owner}.github.io/${repo}" >> "$GITHUB_OUTPUT"
-            echo "base_path=/${repo}" >> "$GITHUB_OUTPUT"
+            base_path="/${repo}"
           fi
+
+          # Where visitors actually end up. This account's Pages site has a
+          # custom domain, and github.io 301s to it, so the browser's origin —
+          # the one CORS has to allow — is the custom domain, not github.io.
+          # Override with the PAGES_URL variable if that domain ever changes.
+          custom='${{ vars.PAGES_URL }}'
+          default="https://alwinphilip.online${base_path}"
+
+          echo "base_path=${base_path}" >> "$GITHUB_OUTPUT"
+          echo "app_url=${custom:-$default}" >> "$GITHUB_OUTPUT"
 
       - run: npm ci
 

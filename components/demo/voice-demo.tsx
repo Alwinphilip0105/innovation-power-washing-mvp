@@ -75,10 +75,18 @@ export function VoiceDemo({
   assistantName,
   businessName,
   greeting,
+  autoStart = false,
 }: {
   assistantName: string;
   businessName: string;
   greeting: string;
+  /**
+   * Place the call as soon as this mounts. Set by the Call buttons, which
+   * mount this inside a dialog: the click that opened the dialog is the user
+   * gesture the browser requires before it will open a microphone, and it is
+   * still in effect here. Starting from a bare page load would not be.
+   */
+  autoStart?: boolean;
 }) {
   const [status, setStatus] = useState<CallStatus>("idle");
   const [lines, setLines] = useState<Line[]>([]);
@@ -225,6 +233,16 @@ export function VoiceDemo({
     listen();
   }, [addLine, greeting, listen, sendTurn]);
 
+  const autoStarted = useRef(false);
+  useEffect(() => {
+    if (!autoStart || autoStarted.current) return;
+    // Guarded by a ref rather than the dep list: startCall is rebuilt whenever
+    // its own callbacks are, and a second call mid-conversation would wipe the
+    // transcript.
+    autoStarted.current = true;
+    void startCall();
+  }, [autoStart, startCall]);
+
   const endCall = useCallback(async () => {
     if (!activeRef.current || !callIdRef.current) return;
 
@@ -306,7 +324,7 @@ export function VoiceDemo({
         </p>
       ) : null}
 
-      <div ref={transcriptRef} className="h-[26rem] space-y-3 overflow-y-auto px-5 py-5">
+      <div ref={transcriptRef} className="h-[min(26rem,42vh)] space-y-3 overflow-y-auto px-5 py-5">
         {lines.length === 0 && !live ? (
           <div className="flex h-full flex-col items-center justify-center text-center">
             <PhoneCall className="mb-3 h-10 w-10 text-body-muted" aria-hidden="true" />

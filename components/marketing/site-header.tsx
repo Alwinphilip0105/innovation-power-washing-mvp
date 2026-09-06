@@ -7,6 +7,7 @@ import { Menu, Phone, X } from "lucide-react";
 
 import { Logo } from "@/components/marketing/logo";
 import { buttonClasses } from "@/components/ui/button";
+import { DemoCallButton } from "@/components/demo/demo-call";
 import { cn } from "@/lib/utils/cn";
 
 const NAV = [
@@ -75,14 +76,12 @@ export function SiteHeader({
             Get a Free Estimate
           </Link>
 
-          <a
-            href={phoneHref}
-            aria-label={`Call ${phoneDisplay}`}
+          <DemoCallButton
             className={buttonClasses({ variant: "secondary", size: "sm", className: "sm:hidden" })}
           >
             <Phone className="h-4 w-4" aria-hidden="true" />
             Call
-          </a>
+          </DemoCallButton>
           <button
             type="button"
             onClick={() => setOpen((value) => !value)}

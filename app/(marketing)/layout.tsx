@@ -1,9 +1,11 @@
 import { ChatWidget } from "@/components/chat/chat-widget";
+import { DemoCallHost } from "@/components/demo/demo-call";
 import { SiteFooter } from "@/components/marketing/site-footer";
 import { SiteHeader } from "@/components/marketing/site-header";
 import { appUrl } from "@/lib/env";
 import { formatPhone } from "@/lib/utils/phone";
 import { getActiveServices, getCurrentBusiness } from "@/services/business";
+import { voiceGreeting } from "@/services/voice-demo";
 
 export default async function MarketingLayout({ children }: LayoutProps<"/">) {
   const business = await getCurrentBusiness();
@@ -64,6 +66,15 @@ export default async function MarketingLayout({ children }: LayoutProps<"/">) {
         assistantName={business.settings.ai.assistantName}
         businessName={business.name}
         greeting={business.settings.ai.greeting}
+      />
+      <DemoCallHost
+        assistantName={business.settings.ai.assistantName}
+        businessName={business.name}
+        // The spoken greeting, not the chat one - this is a phone call, and
+        // /demo/voice opens with exactly the same line.
+        greeting={voiceGreeting(business)}
+        phoneDisplay={phoneDisplay}
+        phoneHref={phoneHref}
       />
       <script
         type="application/ld+json"
