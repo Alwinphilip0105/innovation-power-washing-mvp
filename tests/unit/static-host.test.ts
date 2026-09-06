@@ -1,20 +1,18 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 /**
- * The two seams that let the site be served from a static host (GitHub Pages)
- * while its API stays on a deployment that has a server.
+ * The seams that let this app ship as a static site with no server.
  *
- * These are the pieces that fail silently if they regress: a same-origin URL
- * built into the Pages bundle 404s against a host with no API, and a missing
- * CORS header is only ever visible in a browser console.
+ * These are the pieces that fail silently if they regress: a wrong origin on a
+ * sign-in link is a 404 nobody notices, and a missing CORS header is only ever
+ * visible in a browser console.
  */
 
-/** Fresh module registry — both modules read their config once, at load. */
-async function loadApiClient(base?: string) {
+/** Fresh module registry — these modules read their config once, at load. */
+async function loadOrigin(base?: string) {
   vi.resetModules();
-  if (base === undefined) vi.stubEnv("NEXT_PUBLIC_API_BASE_URL", "");
-  else vi.stubEnv("NEXT_PUBLIC_API_BASE_URL", base);
-  return import("@/lib/api/client");
+  vi.stubEnv("NEXT_PUBLIC_API_BASE_URL", base ?? "");
+  return import("@/lib/api/origin");
 }
 
 async function loadMiddleware(allowed: string) {
@@ -27,27 +25,86 @@ afterEach(() => {
   vi.unstubAllEnvs();
 });
 
-describe("api client", () => {
-  it("stays same-origin when no API base is configured", async () => {
-    const { apiUrl, serverHref, isRemoteServer } = await loadApiClient();
+describe("server origin", () => {
+  it("stays same-origin when nothing is configured", async () => {
+    const { serverHref, isRemoteServer } = await loadOrigin();
 
     expect(isRemoteServer).toBe(false);
-    expect(apiUrl("/api/chat")).toBe("/api/chat");
     expect(serverHref("/login")).toBe("/login");
   });
 
-  it("points at the configured deployment for the static build", async () => {
-    const { apiUrl, serverHref, isRemoteServer } = await loadApiClient("https://app.example.com");
+  it("points sign-in and the dashboard at the configured deployment", async () => {
+    const { serverHref, isRemoteServer } = await loadOrigin("https://app.example.com");
 
     expect(isRemoteServer).toBe(true);
-    expect(apiUrl("/api/chat")).toBe("https://app.example.com/api/chat");
+    expect(serverHref("/login")).toBe("https://app.example.com/login");
     expect(serverHref("/dashboard/calls")).toBe("https://app.example.com/dashboard/calls");
   });
 
   it("does not double the slash when the base has a trailing one", async () => {
-    const { apiUrl } = await loadApiClient("https://app.example.com/");
+    const { serverHref } = await loadOrigin("https://app.example.com/");
 
-    expect(apiUrl("/api/leads")).toBe("https://app.example.com/api/leads");
+    expect(serverHref("/login")).toBe("https://app.example.com/login");
+  });
+});
+
+describe("in-browser transport", () => {
+  /**
+   * The static build swaps this in for the fetch transport. It has to behave
+   * like the network one, because every caller treats the result as a
+   * `Response` and never learns which it got.
+   */
+  it("answers the real endpoints with a Response, without any network", async () => {
+    vi.resetModules();
+    vi.stubEnv("DATA_STORE", "memory");
+    vi.stubGlobal("window", { location: { origin: "https://example.github.io" } });
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
+
+    const { callApi } = await import("@/lib/api/transport-browser");
+
+    const response = await callApi("/api/availability?serviceSlug=house-washing&days=3");
+    const payload = (await response.json()) as { ok: boolean; data?: { days: unknown[] } };
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("Content-Type")).toBe("application/json");
+    expect(payload.ok).toBe(true);
+    expect(Array.isArray(payload.data?.days)).toBe(true);
+
+    // The whole point: nothing left the page.
+    expect(fetchSpy).not.toHaveBeenCalled();
+
+    fetchSpy.mockRestore();
+    vi.unstubAllGlobals();
+  });
+
+  it("validates exactly as the server does, rather than trusting the caller", async () => {
+    vi.resetModules();
+    vi.stubEnv("DATA_STORE", "memory");
+    vi.stubGlobal("window", { location: { origin: "https://example.github.io" } });
+
+    const { callApi } = await import("@/lib/api/transport-browser");
+
+    const response = await callApi("/api/chat", {
+      method: "POST",
+      body: JSON.stringify({ message: "" }),
+    });
+
+    expect(response.status).toBe(400);
+    expect((await response.json()) as { ok: boolean }).toMatchObject({ ok: false });
+
+    vi.unstubAllGlobals();
+  });
+
+  it("404s an endpoint the demo does not carry", async () => {
+    vi.resetModules();
+    vi.stubGlobal("window", { location: { origin: "https://example.github.io" } });
+
+    const { callApi } = await import("@/lib/api/transport-browser");
+    const response = await callApi("/api/webhooks/sms", { method: "POST", body: "{}" });
+
+    expect(response.status).toBe(404);
+
+    vi.unstubAllGlobals();
   });
 });
 

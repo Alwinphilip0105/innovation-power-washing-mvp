@@ -1,5 +1,5 @@
 "use client";
-import { apiUrl } from "@/lib/api/client";
+import { callApi } from "@/lib/api/client";
 
 import { useEffect, useState, type FormEvent } from "react";
 import { CalendarCheck, CheckCircle2, Loader2 } from "lucide-react";
@@ -93,8 +93,8 @@ export function BookingFlow({
 
     void (async () => {
       try {
-        const response = await fetch(
-          apiUrl(`/api/availability?serviceSlug=${encodeURIComponent(serviceSlug)}&days=10`),
+        const response = await callApi(
+          `/api/availability?serviceSlug=${encodeURIComponent(serviceSlug)}&days=10`,
         );
         const payload = (await response.json()) as {
           ok: boolean;
@@ -150,7 +150,7 @@ export function BookingFlow({
     const data = Object.fromEntries(new FormData(form).entries()) as Record<string, string>;
 
     try {
-      const response = await fetch(apiUrl("/api/appointments"), {
+      const response = await callApi("/api/appointments", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

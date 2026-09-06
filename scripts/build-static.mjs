@@ -1,12 +1,17 @@
 // @ts-check
 /**
- * Builds the static GitHub Pages export.
+ * Builds the static GitHub Pages export: a self-contained demo.
  *
  * A static export cannot contain route handlers or pages that read a session
  * cookie, so the API, sign-in and dashboard have to be absent from the tree
  * Next compiles. Rather than delete them from the working tree — which would
  * destroy source if the build were interrupted — this copies the source into a
  * scratch directory, removes them there, and builds that.
+ *
+ * The demo still works, because the browser runs the API handlers itself
+ * against the seeded in-memory dataset. Chat, booking and the voice demo need
+ * no backend, no keys and no configuration — this export depends on nothing at
+ * runtime. Only sign-in and the owner dashboard link out to a real deployment.
  *
  * Building a real copy (instead of, say, filtering routes through config) means
  * Next sees a genuinely smaller app: its generated route types match what is
@@ -63,7 +68,7 @@ function requireEnv(name, hint) {
     console.error(
       `[build-static] ${name} is not set.\n` +
         `  ${hint}\n` +
-        `  Without it the exported site would ship with a dead chat, booking form and voice demo.`,
+        `  Without it the exported site would ship with dead sign-in and dashboard links.`,
     );
     process.exit(1);
   }
@@ -72,14 +77,14 @@ function requireEnv(name, hint) {
 
 const apiBaseUrl = requireEnv(
   "NEXT_PUBLIC_API_BASE_URL",
-  "Set it to the origin of the full deployment that answers this site's API calls, e.g. https://your-app.vercel.app",
+  "Set it to the origin of the full deployment. The demo itself does not call it - this is only where the 'Staff Login' and 'open it in the dashboard' links point, since neither exists in a static export.",
 );
 const appUrl = requireEnv(
   "NEXT_PUBLIC_APP_URL",
   "Set it to the public URL of the Pages site itself, e.g. https://you.github.io/repo — it is used for canonical URLs, the sitemap and robots.txt.",
 );
 
-log(`API calls will go to ${apiBaseUrl}`);
+log(`sign-in and dashboard links will point at ${apiBaseUrl}`);
 log(`site will describe itself as ${appUrl}`);
 
 fs.rmSync(buildDir, { recursive: true, force: true });
@@ -96,6 +101,64 @@ for (const entry of SERVER_ONLY) {
   log(`excluded ${entry}`);
 }
 
+/**
+ * The static build runs the service layer in the browser, so the modules it
+ * reaches cannot be marked `server-only`.
+ *
+ * That marker is load-bearing in the real build - it is what stops the
+ * Supabase store, and the service-role key it holds, being pulled into a
+ * client bundle - so it is stripped here rather than deleted from the source.
+ * It is safe to strip in this tree specifically: `.env.local` is not copied,
+ * no Supabase credentials exist, and the Supabase store is replaced below with
+ * a stub that cannot construct.
+ */
+function unmarkServerOnly(relativePath) {
+  const file = path.join(buildDir, relativePath);
+  const before = fs.readFileSync(file, "utf8");
+  const after = before.replace(/^import "server-only";\n\n?/m, "");
+  if (after === before) {
+    throw new Error(
+      `${relativePath} no longer starts with an \`import "server-only"\`. ` +
+        `The static build strips that marker deliberately - check what changed before removing this.`,
+    );
+  }
+  fs.writeFileSync(file, after);
+  log(`unmarked server-only: ${relativePath}`);
+}
+
+unmarkServerOnly(path.join("lib", "db", "index.ts"));
+unmarkServerOnly(path.join("lib", "bootstrap.ts"));
+
+// Nothing can reach Supabase from a static host, and bundling its SDK into the
+// browser would cost ~100KB to sit unused. The store is selected by env, and
+// no credentials exist here, so this is never constructed.
+fs.writeFileSync(
+  path.join(buildDir, "lib", "db", "supabase-store.ts"),
+  `import type { DataStore } from "@/lib/db/store";
+
+/** Stub swapped in by scripts/build-static.mjs - see the note there. */
+class SupabaseStoreStub {
+  constructor() {
+    throw new Error("The static build has no Supabase store; it runs on the seeded in-memory dataset.");
+  }
+}
+
+// The real class implements DataStore. This one exists only to be unreachable,
+// so the shape is asserted rather than implemented.
+export const SupabaseStore = SupabaseStoreStub as unknown as new () => DataStore;
+`,
+);
+log("stubbed lib/db/supabase-store.ts");
+
+// There is no server to call, so the browser runs the API handlers itself.
+// Swapping the whole transport file (rather than branching at runtime) is what
+// keeps the real build's client bundle from ever referencing them.
+fs.renameSync(
+  path.join(buildDir, "lib", "api", "transport-browser.ts"),
+  path.join(buildDir, "lib", "api", "transport.ts"),
+);
+log("swapped in the in-browser API transport");
+
 // Reuse the installed dependencies instead of a second install. A junction is
 // used because it is the one link type Windows grants without elevation, and
 // on POSIX Node treats the request as an ordinary directory symlink.
@@ -108,9 +171,8 @@ execFileSync(process.execPath, [path.join(root, "node_modules", "next", "dist", 
   env: {
     ...process.env,
     STATIC_EXPORT: "1",
-    // The export is generated from the seeded demo dataset, so the build needs
-    // no database and no credentials. The live data a visitor actually sees
-    // comes from the API deployment at request time.
+    // Seeded in-memory dataset, at build time and again in each visitor's
+    // browser at runtime. No database, no credentials, nothing shared.
     DATA_STORE: "memory",
     NODE_ENV: "production",
   },

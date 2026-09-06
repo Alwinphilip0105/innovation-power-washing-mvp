@@ -1,7 +1,6 @@
-import { createHmac, timingSafeEqual } from "node:crypto";
-
 import { env } from "@/lib/env";
 import { logger } from "@/lib/logging/logger";
+import { constantTimeEquals, hmacSha256Hex } from "@/lib/utils/sha256";
 import type { OutboundSms, SmsProvider, SmsSendResult } from "@/lib/sms/provider";
 
 /**
@@ -17,11 +16,9 @@ export function verifyHmacSignature(rawBody: string, headers: Headers, secret: s
   const provided = headers.get("x-signature") ?? headers.get("x-webhook-signature") ?? "";
   if (!provided) return false;
 
-  const expected = createHmac("sha256", secret).update(rawBody).digest("hex");
-  const providedBuffer = Buffer.from(provided, "utf8");
-  const expectedBuffer = Buffer.from(expected, "utf8");
-  if (providedBuffer.length !== expectedBuffer.length) return false;
-  return timingSafeEqual(providedBuffer, expectedBuffer);
+  // Not `node:crypto`: the static export runs the mock providers in the browser,
+  // and a `node:crypto` import anywhere in this module would follow them there.
+  return constantTimeEquals(provided, hmacSha256Hex(secret, rawBody));
 }
 
 /** Development transport. Outbound texts are logged and recorded as messages. */

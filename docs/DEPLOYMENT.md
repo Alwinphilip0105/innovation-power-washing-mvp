@@ -161,7 +161,8 @@ not implemented. Use `VOICE_PROVIDER=mock` / `BOOKING_PROVIDER=internal`.
 
 ## Serving the public site from GitHub Pages
 
-The marketing pages and demos can also be published to GitHub Pages, with this
-deployment kept as the API, sign-in and dashboard half. That requires
-`CORS_ALLOWED_ORIGINS` to be set here and a redeploy — see
+The public site is also published to GitHub Pages as a self-contained static
+export. It runs the API handlers in the browser and calls nothing, so it needs
+no configuration here and stays up even when this deployment is down. It links
+back here only for sign-in and the owner dashboard. See
 [GITHUB_PAGES.md](GITHUB_PAGES.md).

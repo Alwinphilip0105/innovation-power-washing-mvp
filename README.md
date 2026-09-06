@@ -62,7 +62,8 @@ Chrome or Edge to speak; any other browser falls back to typing. See
 |---|---|
 | `npm run dev` | Development server |
 | `npm run build` | Production build |
-| `npm run build:static` | Static export for GitHub Pages (see `docs/GITHUB_PAGES.md`) |
+| `npm run build:static` | Self-contained static export for GitHub Pages |
+| `npm run test:static` | Builds that export and tests it on a dumb file server |
 | `npm start` | Serve the production build |
 | `npm run lint` | ESLint |
 | `npm run typecheck` | `tsc --noEmit` |
@@ -121,11 +122,12 @@ Full detail, including the RLS model: `docs/SECURITY.md`.
 Vercel, targeting `invpowerwash.alwinphilip.online`. Step by step:
 `docs/DEPLOYMENT.md`.
 
-The public site can additionally be served from GitHub Pages. Pages runs no
-code, so that build carries the marketing pages and the demos only — the API,
-sign-in and the dashboard stay on the Vercel deployment, and the exported pages
-call it over `NEXT_PUBLIC_API_BASE_URL`. Both halves have to be up for the demo
-to work end to end: `docs/GITHUB_PAGES.md`.
+The public site also ships to GitHub Pages as a **self-contained** static
+export that depends on nothing at runtime — no server, no database, no keys.
+The chat, the booking form and the voice demo all run in the browser, against
+the same handlers the API routes use (`lib/api/handlers.ts`). Only the owner
+dashboard and sign-in, which need a session, link back to the Vercel
+deployment. See `docs/GITHUB_PAGES.md`.
 
 ## Testing
 
@@ -173,7 +175,7 @@ docs/             architecture and per-subsystem guides
 | [docs/VOICE.md](docs/VOICE.md) | Telephony abstraction and call flow |
 | [docs/SECURITY.md](docs/SECURITY.md) | Auth, tenant isolation, RLS, webhooks, logging |
 | [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | Vercel deploy, env vars, domain, troubleshooting |
-| [docs/GITHUB_PAGES.md](docs/GITHUB_PAGES.md) | Serving the public site from GitHub Pages, with the API elsewhere |
+| [docs/GITHUB_PAGES.md](docs/GITHUB_PAGES.md) | The self-contained static export and how it runs the API in the browser |
 
 ## Troubleshooting
 

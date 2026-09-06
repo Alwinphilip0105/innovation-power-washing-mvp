@@ -1,24 +1,15 @@
-import { logger } from "@/lib/logging/logger";
+import { handleLead } from "@/lib/api/handlers";
 import { bootstrap } from "@/lib/bootstrap";
-import { track } from "@/lib/analytics";
 import { clientKey, rateLimit } from "@/lib/http/rate-limit";
-import {
-  jsonCreated,
-  jsonError,
-  jsonRateLimited,
-  jsonServerError,
-  jsonValidationError,
-  readJson,
-} from "@/lib/http/responses";
-import { leadFormSchema } from "@/lib/validation/schemas";
-import { getCurrentBusiness } from "@/services/business";
-import { captureWebsiteLead } from "@/services/leads";
+import { jsonError, jsonRateLimited, readJson } from "@/lib/http/responses";
+import { toResponse } from "@/lib/http/to-response";
 
 /**
  * Public lead capture: website "Get a Free Estimate" form.
  *
- * Untrusted input, so: rate limited by IP, honeypot checked, schema validated,
- * and nothing reaches the database that has not been parsed.
+ * Untrusted input, so: rate limited by IP here, then honeypot checked and
+ * schema validated in the shared handler. Nothing reaches the database that
+ * has not been parsed.
  */
 export async function POST(request: Request) {
   bootstrap();
@@ -29,30 +20,5 @@ export async function POST(request: Request) {
   const body = await readJson(request);
   if (body === null) return jsonError("We could not read that submission.", 400);
 
-  const parsed = leadFormSchema.safeParse(body);
-  if (!parsed.success) return jsonValidationError(parsed.error);
-
-  // Honeypot: a filled field means a bot. Answer 201 so it learns nothing.
-  if (parsed.data.company) {
-    logger.warn("lead honeypot triggered", { event: "lead.rejected" });
-    return jsonCreated({ leadId: null, serviceName: null });
-  }
-
-  try {
-    const business = await getCurrentBusiness();
-    const result = await captureWebsiteLead(business, parsed.data);
-
-    await track(business.id, "lead_submitted", {
-      source: "website",
-      service: result.service?.slug ?? parsed.data.serviceSlug,
-      deduplicated: result.deduplicated,
-    });
-
-    return jsonCreated({
-      leadId: result.lead.id,
-      serviceName: result.service?.name ?? null,
-    });
-  } catch (error) {
-    return jsonServerError(error, { event: "lead.create" });
-  }
+  return toResponse(await handleLead(body));
 }

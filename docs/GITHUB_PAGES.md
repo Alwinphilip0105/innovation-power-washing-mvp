@@ -1,87 +1,101 @@
 # Hosting the demo on GitHub Pages
 
-The public site — the marketing pages, the chat widget and the browser voice
-demo — can be served from GitHub Pages. The rest of the product cannot, and this
-document is mostly about that line.
+The public site — the marketing pages, the chat widget, the booking form and
+the voice demo — ships to GitHub Pages as a **self-contained** static export.
+It depends on nothing at runtime: no server, no database, no API keys, no
+configuration. Open the page and the product works.
 
-## What Pages can and cannot serve
+## How that is possible
 
-GitHub Pages serves files. It runs no code. So the export contains:
+GitHub Pages serves files and runs no code. The trick is that almost none of
+this product actually needs a server — it needs *code to run somewhere*, and a
+browser is somewhere.
 
-| Part | On Pages | Why |
+The public API is written as transport-agnostic handlers in
+[`lib/api/handlers.ts`](../lib/api/handlers.ts). Two things call them:
+
+- **On a real deployment**, the route handlers in `app/api/*`. They add the
+  parts only a server can do — rate limiting by client address — and put the
+  result on the wire.
+- **In the static export**, the browser itself, via
+  [`lib/api/transport-browser.ts`](../lib/api/transport-browser.ts), which
+  returns a real `Response` so no caller can tell the difference.
+
+Same handlers, same Zod validation, same booking rules, same assistant, same
+JSON. A fix to either lands on both.
+
+| Part | On Pages | How |
 | --- | --- | --- |
-| Marketing pages (`/`, `/services`, `/book`, …) | ✅ served | Prerendered at build time |
-| `/demo/voice` | ✅ served | Speech runs in the browser; the assistant is called over HTTP |
-| Chat widget, booking form, lead form | ✅ shown, ⚠️ calls out | The forms are static; their `POST`s go to the API deployment |
-| `POST /api/*` | ❌ absent | Route handlers need a server |
-| `/login`, `/dashboard/*` | ❌ absent | Server-rendered behind a session cookie |
+| Marketing pages | ✅ | Prerendered at build time |
+| Chat widget | ✅ | Assistant + tool loop run in the page |
+| Booking form | ✅ | Real availability from the booking rules; books a real appointment |
+| Voice demo and the Call buttons | ✅ | Speech in the browser, assistant in the browser |
+| Owner dashboard, sign-in | ❌ | Server-rendered behind a session cookie — these link out |
 
-So Pages is the **front half** of a two-origin setup. The other half is a normal
-deployment of this same repo (Vercel, or anything that runs Next) which keeps
-the API, sign-in and the dashboard. Pages links out to it for those.
+### What you give up
 
-That means **the demo only works end to end once both halves are up**. A Pages
-site pointed at nothing looks perfect and fails the moment anyone types into the
-chat box.
+The dataset is the seeded one, held **per visitor, in that tab**:
 
-## One-time setup
+- A lead someone submits is visible only to them. Nothing is shared, and
+  nothing reaches a real database.
+- A reload starts the demo over.
+- The assistant is the deterministic mock. The Anthropic provider needs an API
+  key, which cannot ship to a browser.
+- "Staff Login" and "open it in the dashboard" leave the site for the real
+  deployment, because neither can exist here.
 
-### 1. Deploy the full app somewhere with a server
+For a demo that is mostly upside: every visitor gets a clean, working product
+with no shared state to corrupt and nothing to configure.
 
-Follow `docs/DEPLOYMENT.md`. Confirm it works before wiring Pages to it:
+## Setup
+
+### 1. Turn Pages on
+
+**Settings → Pages → Build and deployment → Source: GitHub Actions.**
+
+This must be *GitHub Actions*, not "Deploy from a branch". A branch source
+serves the repository root, which renders `README.md` through Jekyll instead of
+publishing the export.
+
+On the Free plan Pages requires a public repository.
+
+### 2. Push to `main`
+
+[`.github/workflows/pages.yml`](../.github/workflows/pages.yml) builds and
+publishes, and can also be run from the Actions tab.
+
+That is the whole setup. There is no CORS to configure and no environment to
+set, because the published site calls nothing.
+
+### Optional repository variables
+
+**Settings → Secrets and variables → Actions → Variables**
+
+| Variable | Default | What it does |
+| --- | --- | --- |
+| `API_BASE_URL` | the current Vercel deployment | Where "Staff Login" and the dashboard links point. Not used by the demo itself. |
+| `PAGES_URL` | `https://alwinphilip.online/<repo>` | The site's own public URL, for canonical tags, the sitemap and `robots.txt`. |
+
+> **Custom domains:** this account's Pages site redirects `github.io` to
+> `alwinphilip.online`, so that is the real origin. A custom domain does **not**
+> move a project site to the root — it still serves from `/<repo>`, and the base
+> path is computed accordingly.
+
+## Building and testing it locally
 
 ```bash
-curl https://innovation-power-washing-mvp.vercel.app/api/health
+npm run test:static
 ```
 
-Expect `"status": "ok"`. If it says `degraded`, fix that first — the `warnings`
-array names what is unset. A deployment with no `AUTH_SECRET` or with
-`dataStore.kind: "memory"` will produce a demo that loses data and signs people
-out at random.
+That builds the export and runs [`tests/static`](../tests/static) against it on
+a deliberately dumb file server — no dev server, no rewrites — so anything that
+would secretly need one fails there rather than in production. The load-bearing
+assertion is the negative one: **no request may leave the origin.** If the
+in-browser transport were ever swapped back for `fetch`, the demo would still
+pass locally against a dev server and break the moment it was published; that
+test is what catches it.
 
-### 2. Let it accept calls from the Pages origin
-
-On the deployment, set:
-
-```
-CORS_ALLOWED_ORIGINS=https://<owner>.github.io
-```
-
-Then **redeploy**. This value is read at build time on an edge runtime, so
-editing it in a dashboard does nothing to the deployment already running.
-
-Only the public browser endpoints are exposed this way (`/api/chat`,
-`/api/leads`, `/api/availability`, `/api/appointments`, `/api/demo/*`,
-`/api/health`). The webhook routes are not, and nothing behind sign-in is:
-these endpoints carry no cookies, so no `Access-Control-Allow-Credentials` is
-ever issued and a spoofed origin gains no session.
-
-### 3. Point the repository at that deployment
-
-The workflow already defaults to
-`https://innovation-power-washing-mvp.vercel.app`, so nothing is needed here
-unless that changes. To override, set repository variables under
-**Settings → Secrets and variables → Actions → Variables**:
-
-| Variable | Value |
-| --- | --- |
-| `API_BASE_URL` | `https://<your-deployment>` — origin only, no trailing path |
-| `PAGES_URL` | only if serving from a custom domain |
-
-### 4. Turn Pages on
-
-**Settings → Pages → Source: GitHub Actions.**
-
-Note: on a Free plan, Pages requires a **public** repository. This repo is
-private, so this either needs the repo made public or a plan that includes Pages
-from private repositories.
-
-### 5. Push to `main`
-
-`.github/workflows/pages.yml` builds and publishes. It also runs on demand from
-the Actions tab.
-
-## Building it locally
+To build without testing:
 
 ```bash
 NEXT_PUBLIC_API_BASE_URL=https://your-app.vercel.app \
@@ -90,41 +104,45 @@ PAGES_BASE_PATH=/innovation-power-washing-mvp \
 npm run build:static
 ```
 
-Output lands in `out/`. Serve it with any static server to check it, remembering
-that the base path has to be part of the URL.
+Output lands in `out/`.
 
-## How the two builds differ
+## How the static build is produced
 
-`npm run build` produces the whole product. `npm run build:static` runs
-`scripts/build-static.mjs`, which copies the source to a scratch directory,
-deletes `app/api`, `app/dashboard`, `app/login` and `components/dashboard`, and
-builds *that* with `output: "export"`.
+`scripts/build-static.mjs` copies the source into a scratch directory and
+changes it there — never the working tree, so an interrupted build cannot
+destroy source. `.env.local` is deliberately not copied: the export ships to a
+public host, so its configuration must be explicit and secret-free.
 
-It builds a copy rather than the working tree so an interrupted build cannot
-destroy source, and `.env.local` is deliberately not copied — the export ships
-to a public host, so its configuration is explicit and secret-free. The export
-is generated from the seeded in-memory dataset (`DATA_STORE=memory`), so no
-database credentials are needed to build it; the live data a visitor sees comes
-from the API deployment at request time.
+In that scratch copy it:
 
-Two seams make the same components work in both builds:
+1. **Removes** `app/api`, `app/dashboard`, `app/login` and
+   `components/dashboard` — nothing that needs a server survives.
+2. **Strips `import "server-only"`** from `lib/db/index.ts` and
+   `lib/bootstrap.ts`. That marker is load-bearing in the real build — it is
+   what stops the Supabase store and its service-role key reaching a client
+   bundle — so it is relaxed only here, where no credentials exist.
+3. **Stubs `lib/db/supabase-store.ts`**, so the Supabase SDK is not bundled into
+   the browser to sit unused.
+4. **Swaps `transport-browser.ts` over `transport.ts`.** Replacing the file
+   rather than branching at runtime is what keeps the real build's client bundle
+   from ever referencing the handlers.
 
-- **`lib/api/client.ts`** — `apiUrl()` and `serverHref()` prefix
-  `NEXT_PUBLIC_API_BASE_URL` when it is set and return a plain relative path
-  when it is not. A single deployment is therefore unaffected: every call stays
-  same-origin.
-- **`lib/hooks/use-requested-service.ts`** — `/book?service=…` is read from the
-  URL in the browser rather than from `searchParams` on the server, because a
-  prerendered page has no request to read. It uses `useSyncExternalStore`, so
-  the value is present on the render that hydrates and no form ever acts on the
-  wrong service first.
+Then it builds that tree with `output: "export"`.
 
-## Checking a live deploy
+### Supporting changes in the shared code
 
-1. Open the Pages URL. The pages should render fully — they are prerendered, so
-   they look right even when the API is unreachable. **This proves nothing yet.**
-2. Open the chat widget and send a message. A reply means the whole path works.
-3. If it fails, open the browser console. A CORS error means step 2 of the setup
-   was missed or not redeployed. A 404 means `API_BASE_URL` is wrong.
-4. `curl https://<your-deployment>/api/health` lists `corsAllowedOrigins`;
-   confirm the Pages origin is in it, spelled exactly, with no trailing slash.
+- `lib/utils/id.ts` and `lib/sms/providers.ts` no longer use `node:crypto`;
+  they use `lib/utils/sha256.ts`, a plain-TypeScript SHA-256 and HMAC pinned
+  against Node's own implementation in `tests/unit/sha256.test.ts`. A single
+  `node:crypto` import anywhere in that module graph would break the browser
+  bundle. `lib/auth` still uses it, and is never reached from the browser.
+- `/book?service=…` is read from the URL in the browser rather than from
+  `searchParams` on the server, because a prerendered page has no request to
+  read — see `lib/hooks/use-requested-service.ts`.
+
+## About the CORS middleware
+
+`middleware.ts` allows the origins in `CORS_ALLOWED_ORIGINS` to call the public
+API cross-origin. **The Pages demo does not need it** — it calls nothing. It
+stays for the case of pointing some other front end at a real deployment, and
+is inert when the variable is unset.

@@ -1,7 +1,14 @@
-import { randomUUID, createHash } from "node:crypto";
+import { sha256Hex } from "@/lib/utils/sha256";
 
+/**
+ * Id helpers, usable on the server and in the browser.
+ *
+ * Deliberately not `node:crypto`: the static export runs the same service layer
+ * client-side, and these are reached from it. `globalThis.crypto` is the Web
+ * Crypto API, present in browsers and in Node 19+.
+ */
 export function newId(): string {
-  return randomUUID();
+  return globalThis.crypto.randomUUID();
 }
 
 /**
@@ -9,7 +16,7 @@ export function newId(): string {
  * and idempotency keys stay stable across restarts.
  */
 export function stableId(namespace: string, key: string): string {
-  const hex = createHash("sha256").update(`${namespace}:${key}`).digest("hex");
+  const hex = sha256Hex(`${namespace}:${key}`);
   return [
     hex.slice(0, 8),
     hex.slice(8, 12),

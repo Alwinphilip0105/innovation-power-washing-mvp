@@ -1,5 +1,5 @@
 "use client";
-import { apiUrl } from "@/lib/api/client";
+import { callApi } from "@/lib/api/client";
 
 import { useState, type FormEvent } from "react";
 import { CheckCircle2, Loader2, ShieldCheck } from "lucide-react";
@@ -61,7 +61,7 @@ export function LeadForm({
     const data = Object.fromEntries(new FormData(form).entries());
 
     try {
-      const response = await fetch(apiUrl("/api/leads"), {
+      const response = await callApi("/api/leads", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),

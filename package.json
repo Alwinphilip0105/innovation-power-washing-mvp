@@ -13,6 +13,7 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
+    "test:static": "node scripts/test-static.mjs",
     "check": "npm run lint && npm run typecheck && npm run test",
     "db:seed": "tsx scripts/seed.ts",
     "format": "prettier --write ."

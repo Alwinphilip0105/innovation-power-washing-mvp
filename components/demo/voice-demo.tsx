@@ -1,5 +1,5 @@
 "use client";
-import { apiUrl, serverHref } from "@/lib/api/client";
+import { callApi, serverHref } from "@/lib/api/client";
 
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Loader2, Mic, MicOff, PhoneCall, PhoneOff, Send, Volume2 } from "lucide-react";
@@ -160,7 +160,7 @@ export function VoiceDemo({
       let reply: string | null = null;
 
       try {
-        const response = await fetch(apiUrl("/api/demo/voice"), {
+        const response = await callApi("/api/demo/voice", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -256,7 +256,7 @@ export function VoiceDemo({
     const durationSeconds = Math.max(0, Math.round((Date.now() - startedAtRef.current) / 1000));
 
     try {
-      const response = await fetch(apiUrl("/api/demo/voice"), {
+      const response = await callApi("/api/demo/voice", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
