@@ -158,3 +158,10 @@ not match. Confirm the HMAC is over the exact raw body.
 
 **A voice or calendar provider throws.** You selected an adapter seat that is
 not implemented. Use `VOICE_PROVIDER=mock` / `BOOKING_PROVIDER=internal`.
+
+## Serving the public site from GitHub Pages
+
+The marketing pages and demos can also be published to GitHub Pages, with this
+deployment kept as the API, sign-in and dashboard half. That requires
+`CORS_ALLOWED_ORIGINS` to be set here and a redeploy — see
+[GITHUB_PAGES.md](GITHUB_PAGES.md).

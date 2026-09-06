@@ -14,10 +14,10 @@ export const metadata: Metadata = {
     "Pick a real opening on our schedule, or send us your details and we will call you back with a written estimate.",
 };
 
-export default async function BookPage({ searchParams }: PageProps<"/book">) {
-  const params = await searchParams;
-  const requested = typeof params.service === "string" ? params.service : undefined;
-
+// `?service=` is applied by the forms themselves, in the browser — see
+// lib/hooks/use-requested-service.ts. Reading it here instead would make this
+// page impossible to prerender, and the static build has no request to read.
+export default async function BookPage() {
   const business = await getCurrentBusiness();
   const services = await getActiveServices(business.id);
   const phoneDisplay = formatPhone(business.phone);
@@ -50,7 +50,6 @@ export default async function BookPage({ searchParams }: PageProps<"/book">) {
                 startingPrice: service.starting_price,
                 quoteOnly: service.pricing_model === "quote_only",
               }))}
-              defaultServiceSlug={requested}
               phoneDisplay={phoneDisplay}
               timezoneLabel={timezoneLabel}
             />
@@ -84,7 +83,6 @@ export default async function BookPage({ searchParams }: PageProps<"/book">) {
                 <LeadForm
                   compact
                   services={services.map((service) => ({ slug: service.slug, name: service.name }))}
-                  defaultServiceSlug={requested}
                   phoneDisplay={phoneDisplay}
                 />
               </div>

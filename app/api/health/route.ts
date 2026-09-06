@@ -2,7 +2,7 @@ import { getAIProvider } from "@/lib/ai";
 import { supabaseAuthConfigured } from "@/lib/auth";
 import { getBookingProvider } from "@/lib/booking";
 import { getStore } from "@/lib/db";
-import { dataStoreKind, env, isProduction } from "@/lib/env";
+import { corsAllowedOrigins, dataStoreKind, env, isProduction } from "@/lib/env";
 import { jsonOk } from "@/lib/http/responses";
 import { getEmailProvider } from "@/lib/notifications/providers";
 import { getSmsProvider } from "@/lib/sms/providers";
@@ -59,6 +59,9 @@ export async function GET() {
       provider: supabaseAuthConfigured() ? "supabase" : "dev",
       secretConfigured: authSecretConfigured,
     },
+    // Public origins, never secrets. A static host whose origin is missing here
+    // is the reason its chat and booking form fail with no visible error.
+    corsAllowedOrigins,
     providers: {
       ai: getAIProvider().name,
       booking: getBookingProvider().name,

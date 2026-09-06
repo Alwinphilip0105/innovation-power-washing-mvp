@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Mail, MapPin, Phone } from "lucide-react";
 
 import { Logo } from "@/components/marketing/logo";
+import { serverHref } from "@/lib/api/client";
 import { WEEKDAYS } from "@/lib/utils/datetime";
 import type { Business, Service } from "@/lib/db/types";
 import { formatPhone } from "@/lib/utils/phone";
@@ -109,9 +110,11 @@ export function SiteFooter({ business, services }: { business: Business; service
             <Link href="/book" className="hover:text-white">
               Free Estimate
             </Link>
-            <Link href="/login" className="hover:text-white">
+            {/* Sign-in is server-rendered, so on the static build it lives
+                on the full deployment rather than on this host. */}
+            <a href={serverHref("/login")} className="hover:text-white">
               Staff Login
-            </Link>
+            </a>
           </nav>
         </div>
       </div>

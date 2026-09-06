@@ -1,4 +1,5 @@
 "use client";
+import { apiUrl } from "@/lib/api/client";
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { MessageSquare, Send, X } from "lucide-react";
@@ -64,7 +65,7 @@ export function ChatWidget({
     setPending(true);
 
     try {
-      const response = await fetch("/api/chat", {
+      const response = await fetch(apiUrl("/api/chat"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: trimmed, conversationId, channel: "web" }),

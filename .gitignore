@@ -17,6 +17,9 @@
 /.next/
 /out/
 
+# static (GitHub Pages) export scratch tree
+/.static-build/
+
 # production
 /build
 

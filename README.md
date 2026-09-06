@@ -51,6 +51,7 @@ conversations — so the dashboard is useful on first load rather than empty.
 |---|---|
 | `npm run dev` | Development server |
 | `npm run build` | Production build |
+| `npm run build:static` | Static export for GitHub Pages (see `docs/GITHUB_PAGES.md`) |
 | `npm start` | Serve the production build |
 | `npm run lint` | ESLint |
 | `npm run typecheck` | `tsc --noEmit` |
@@ -109,6 +110,12 @@ Full detail, including the RLS model: `docs/SECURITY.md`.
 Vercel, targeting `invpowerwash.alwinphilip.online`. Step by step:
 `docs/DEPLOYMENT.md`.
 
+The public site can additionally be served from GitHub Pages. Pages runs no
+code, so that build carries the marketing pages and the demos only — the API,
+sign-in and the dashboard stay on the Vercel deployment, and the exported pages
+call it over `NEXT_PUBLIC_API_BASE_URL`. Both halves have to be up for the demo
+to work end to end: `docs/GITHUB_PAGES.md`.
+
 ## Testing
 
 ```bash
@@ -155,6 +162,7 @@ docs/             architecture and per-subsystem guides
 | [docs/VOICE.md](docs/VOICE.md) | Telephony abstraction and call flow |
 | [docs/SECURITY.md](docs/SECURITY.md) | Auth, tenant isolation, RLS, webhooks, logging |
 | [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | Vercel deploy, env vars, domain, troubleshooting |
+| [docs/GITHUB_PAGES.md](docs/GITHUB_PAGES.md) | Serving the public site from GitHub Pages, with the API elsewhere |
 
 ## Troubleshooting
 

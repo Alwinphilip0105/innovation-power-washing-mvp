@@ -1,4 +1,5 @@
 "use client";
+import { apiUrl } from "@/lib/api/client";
 
 import { useEffect, useState, type FormEvent } from "react";
 import { CalendarCheck, CheckCircle2, Loader2 } from "lucide-react";
@@ -6,6 +7,7 @@ import { CalendarCheck, CheckCircle2, Loader2 } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Field, Input, Textarea } from "@/components/ui/field";
+import { useRequestedService } from "@/lib/hooks/use-requested-service";
 import { cn } from "@/lib/utils/cn";
 
 export interface BookableService {
@@ -56,16 +58,19 @@ function formatDay(day: Day): string {
 
 export function BookingFlow({
   services,
-  defaultServiceSlug,
   phoneDisplay,
   timezoneLabel,
 }: {
   services: BookableService[];
-  defaultServiceSlug?: string;
   phoneDisplay: string;
   timezoneLabel: string;
 }) {
-  const [serviceSlug, setServiceSlug] = useState(defaultServiceSlug ?? services[0]?.slug ?? "");
+  // Derived rather than stored, so `?service=` is already applied on the render
+  // that hydrates - the availability request below is never made for the wrong
+  // service first. `chosenSlug` is set only once the visitor picks one himself.
+  const requestedSlug = useRequestedService(services);
+  const [chosenSlug, setChosenSlug] = useState<string | null>(null);
+  const serviceSlug = chosenSlug ?? requestedSlug ?? services[0]?.slug ?? "";
   const [days, setDays] = useState<Day[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(true);
   const [slotError, setSlotError] = useState<string | null>(null);
@@ -89,7 +94,7 @@ export function BookingFlow({
     void (async () => {
       try {
         const response = await fetch(
-          `/api/availability?serviceSlug=${encodeURIComponent(serviceSlug)}&days=10`,
+          apiUrl(`/api/availability?serviceSlug=${encodeURIComponent(serviceSlug)}&days=10`),
         );
         const payload = (await response.json()) as {
           ok: boolean;
@@ -121,7 +126,7 @@ export function BookingFlow({
 
   function selectService(slug: string) {
     if (slug === serviceSlug) return;
-    setServiceSlug(slug);
+    setChosenSlug(slug);
     setSelected(null);
     setSlotError(null);
     setLoadingSlots(true);
@@ -145,7 +150,7 @@ export function BookingFlow({
     const data = Object.fromEntries(new FormData(form).entries()) as Record<string, string>;
 
     try {
-      const response = await fetch("/api/appointments", {
+      const response = await fetch(apiUrl("/api/appointments"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

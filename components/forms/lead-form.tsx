@@ -1,4 +1,5 @@
 "use client";
+import { apiUrl } from "@/lib/api/client";
 
 import { useState, type FormEvent } from "react";
 import { CheckCircle2, Loader2, ShieldCheck } from "lucide-react";
@@ -6,6 +7,7 @@ import { CheckCircle2, Loader2, ShieldCheck } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Field, Input, Select, Textarea } from "@/components/ui/field";
+import { useRequestedService } from "@/lib/hooks/use-requested-service";
 
 export interface LeadFormService {
   slug: string;
@@ -32,15 +34,16 @@ const FIELD_IDS = {
 
 export function LeadForm({
   services,
-  defaultServiceSlug,
   phoneDisplay,
   compact = false,
 }: {
   services: LeadFormService[];
-  defaultServiceSlug?: string;
   phoneDisplay: string;
   compact?: boolean;
 }) {
+  const requestedSlug = useRequestedService(services);
+  const selectedService = requestedSlug ?? services[0]?.slug;
+
   const [pending, setPending] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -58,7 +61,7 @@ export function LeadForm({
     const data = Object.fromEntries(new FormData(form).entries());
 
     try {
-      const response = await fetch("/api/leads", {
+      const response = await fetch(apiUrl("/api/leads"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
@@ -211,7 +214,10 @@ export function LeadForm({
           <Select
             id={FIELD_IDS.serviceSlug}
             name="serviceSlug"
-            defaultValue={defaultServiceSlug ?? services[0]?.slug}
+            // Remounts the uncontrolled select when `?service=` resolves
+            // after hydration; without the key its defaultValue is fixed.
+            key={selectedService}
+            defaultValue={selectedService}
             required
             invalid={Boolean(fieldErrors.serviceSlug)}
           >

@@ -11,6 +11,11 @@ const envSchema = z.object({
   APP_URL: z.string().url().optional(),
   NEXT_PUBLIC_APP_URL: z.string().url().optional(),
 
+  // Static hosting. Set only when the site is served from somewhere other than
+  // the deployment answering its API calls - see docs/GITHUB_PAGES.md.
+  NEXT_PUBLIC_API_BASE_URL: z.string().url().optional(),
+  CORS_ALLOWED_ORIGINS: z.string().optional(),
+
   // Data layer
   DATA_STORE: z.enum(["memory", "supabase"]).optional(),
   DATABASE_URL: z.string().optional(),
@@ -78,6 +83,16 @@ export const dataStoreKind: "memory" | "supabase" =
 
 export const appUrl =
   env.APP_URL ?? env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+
+/**
+ * Origins allowed to call the public API cross-origin. Public hostnames, not
+ * secrets. Empty means same-origin only, which is right for a single
+ * deployment serving both the site and its API.
+ */
+export const corsAllowedOrigins: string[] = (env.CORS_ALLOWED_ORIGINS ?? "")
+  .split(",")
+  .map((value) => value.trim().replace(/\/+$/, ""))
+  .filter(Boolean);
 
 export const isProduction = env.NODE_ENV === "production";
 export const isTest = env.NODE_ENV === "test";
