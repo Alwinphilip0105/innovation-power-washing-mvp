@@ -2,7 +2,7 @@ import { getAIProvider } from "@/lib/ai";
 import { supabaseAuthConfigured } from "@/lib/auth";
 import { getBookingProvider } from "@/lib/booking";
 import { getStore } from "@/lib/db";
-import { corsAllowedOrigins, dataStoreKind, env, isProduction } from "@/lib/env";
+import { corsAllowedOrigins, dataStoreKind, env, isProduction, rejectedEnvKeys } from "@/lib/env";
 import { jsonOk } from "@/lib/http/responses";
 import { getEmailProvider } from "@/lib/notifications/providers";
 import { getSmsProvider } from "@/lib/sms/providers";
@@ -17,6 +17,22 @@ import { getVoiceProvider } from "@/lib/voice/provider";
  * per-process key, so on a serverless host each instance rejects the others'
  * sessions and users are bounced to the login page at random.
  */
+/**
+ * The variables a real deployment needs. Reported by presence only, and read
+ * straight from process.env rather than the parsed config, so a variable that
+ * was set but rejected still shows as present - which is what distinguishes
+ * "never configured" from "configured wrongly".
+ */
+const EXPECTED_PRODUCTION_ENV = [
+  "AUTH_SECRET",
+  "AUTH_PROVIDER",
+  "DATA_STORE",
+  "SUPABASE_URL",
+  "SUPABASE_SERVICE_ROLE_KEY",
+  "APP_URL",
+  "NEXT_PUBLIC_APP_URL",
+] as const;
+
 export async function GET() {
   const store = getStore();
 
@@ -31,7 +47,18 @@ export async function GET() {
   }
 
   const authSecretConfigured = Boolean(env.AUTH_SECRET);
+  const envPresent = Object.fromEntries(
+    EXPECTED_PRODUCTION_ENV.map((name) => [name, Boolean(process.env[name]?.trim())]),
+  );
   const warnings: string[] = [];
+
+  if (rejectedEnvKeys.length > 0) {
+    warnings.push(
+      `These environment variables are set but failed validation and are being ignored: ` +
+        `${rejectedEnvKeys.join(", ")}. Check for a trailing space or newline, or a value ` +
+        `outside the allowed set. Fix the value and redeploy.`,
+    );
+  }
 
   if (isProduction && !authSecretConfigured) {
     warnings.push(
@@ -62,6 +89,11 @@ export async function GET() {
     // Public origins, never secrets. A static host whose origin is missing here
     // is the reason its chat and booking form fail with no visible error.
     corsAllowedOrigins,
+    // Presence, never values. `false` for something you believe you set means
+    // it did not reach this deployment - wrong environment scope, or set after
+    // the last deploy.
+    envConfigured: envPresent,
+    envRejected: rejectedEnvKeys,
     providers: {
       ai: getAIProvider().name,
       booking: getBookingProvider().name,
