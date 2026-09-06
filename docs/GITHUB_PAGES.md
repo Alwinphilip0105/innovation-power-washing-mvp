@@ -73,7 +73,7 @@ set, because the published site calls nothing.
 
 | Variable | Default | What it does |
 | --- | --- | --- |
-| `API_BASE_URL` | the current Vercel deployment | Where "Staff Login" and the dashboard links point. Not used by the demo itself. |
+| `API_BASE_URL` | `https://power-washing-mvp.vercel.app` | Where "Staff Login" and the dashboard links point. Not used by the demo itself. |
 | `PAGES_URL` | `https://alwinphilip.online/<repo>` | The site's own public URL, for canonical tags, the sitemap and `robots.txt`. |
 
 > **Custom domains:** this account's Pages site redirects `github.io` to
@@ -146,3 +146,23 @@ Then it builds that tree with `output: "export"`.
 API cross-origin. **The Pages demo does not need it** — it calls nothing. It
 stays for the case of pointing some other front end at a real deployment, and
 is inert when the variable is unset.
+
+## Two Vercel projects build this repo
+
+`power-washing-mvp` is the configured one: `AUTH_SECRET` set, the Supabase
+store, and `/api/health` reporting `ok`. `innovation-power-washing-mvp` has no
+environment variables at all, so its dashboard signs you out on every
+navigation - each serverless instance signs session cookies with its own random
+key.
+
+Both auto-deploy from `main`, so both always run current code and look
+identical until you sign in. If sign-in bounces, check which one you are on
+before changing any configuration:
+
+```bash
+curl https://power-washing-mvp.vercel.app/api/health
+```
+
+`envNamesSeen` in that response lists the app variables the deployment can
+actually see, by name. An empty list means the variables are on the other
+project.

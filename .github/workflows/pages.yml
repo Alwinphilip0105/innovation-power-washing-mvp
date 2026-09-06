@@ -59,14 +59,19 @@ jobs:
 
       - run: npm ci
 
-      # Which deployment answers this site's API calls. Defaults to the
-      # current one; set the API_BASE_URL repository variable to point the
-      # exported site somewhere else without touching this file.
+      # Where "Staff Login" and the dashboard links point. The demo itself
+      # calls nothing, so this is only used for those links.
+      #
+      # Two Vercel projects build this repo. `power-washing-mvp` is the
+      # configured one - AUTH_SECRET set, Supabase store, /api/health "ok".
+      # `innovation-power-washing-mvp` has no environment at all, so linking
+      # there gives a dashboard that signs you out on every navigation.
+      # Override with the API_BASE_URL repository variable.
       - name: Resolve the API origin
         id: api
         run: |
           url='${{ vars.API_BASE_URL }}'
-          echo "url=${url:-https://innovation-power-washing-mvp.vercel.app}" >> "$GITHUB_OUTPUT"
+          echo "url=${url:-https://power-washing-mvp.vercel.app}" >> "$GITHUB_OUTPUT"
 
       - name: Build the static export
         env:
