@@ -1,5 +1,6 @@
 import { Phone, Star } from "lucide-react";
 
+import { DemoCallButton } from "@/components/demo/demo-call";
 import { Scene } from "@/components/graphics/scenes";
 import { ButtonLink } from "@/components/ui/button";
 
@@ -48,13 +49,18 @@ export function Hero({
             <ButtonLink href="/book" size="lg" className="sm:min-w-56">
               Get a Free Estimate
             </ButtonLink>
-            <a
-              href={phoneHref}
-              className="inline-flex items-center justify-center gap-2 rounded-md border-2 border-white/40 px-6 py-3.5 text-base font-semibold text-white transition-colors hover:bg-white hover:text-ink-900 sm:text-lg"
-            >
-              <Phone className="h-5 w-5" aria-hidden="true" />
-              Call {phoneDisplay}
-            </a>
+            <div className="flex flex-col items-stretch gap-1.5">
+              <DemoCallButton className="inline-flex items-center justify-center gap-2 rounded-md border-2 border-white/40 px-6 py-3.5 text-base font-semibold text-white transition-colors hover:bg-white hover:text-ink-900 sm:text-lg">
+                <Phone className="h-5 w-5" aria-hidden="true" />
+                Call the AI agent
+              </DemoCallButton>
+              <a
+                href={phoneHref}
+                className="text-center text-sm text-white/70 hover:text-white hover:underline"
+              >
+                or dial {phoneDisplay}
+              </a>
+            </div>
           </div>
 
           <p className="mt-6 text-sm text-white/70">
