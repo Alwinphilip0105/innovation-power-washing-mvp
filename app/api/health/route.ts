@@ -50,6 +50,16 @@ export async function GET() {
   const envPresent = Object.fromEntries(
     EXPECTED_PRODUCTION_ENV.map((name) => [name, Boolean(process.env[name]?.trim())]),
   );
+
+  /**
+   * The names - never the values - of every app-shaped variable this process
+   * can actually see. This is what distinguishes a misspelled variable from one
+   * that never reached the deployment at all: a typo shows up here under the
+   * wrong name, while a wrong project or scope shows up as an empty list.
+   */
+  const envNamesSeen = Object.keys(process.env)
+    .filter((name) => /^(AUTH|SUPA|DATA_STORE|APP_URL|NEXT_PUBLIC|CORS|LLM|AI_|SMS|EMAIL|VOICE|BOOKING)/i.test(name))
+    .sort();
   const warnings: string[] = [];
 
   if (rejectedEnvKeys.length > 0) {
@@ -94,6 +104,7 @@ export async function GET() {
     // the last deploy.
     envConfigured: envPresent,
     envRejected: rejectedEnvKeys,
+    envNamesSeen,
     providers: {
       ai: getAIProvider().name,
       booking: getBookingProvider().name,
