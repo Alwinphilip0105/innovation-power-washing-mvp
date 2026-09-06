@@ -187,6 +187,33 @@ export const voiceWebhookSchema = z.object({
   businessSlug: z.string().max(80).optional(),
 });
 
+// --------------------------------------------------------------- voice demo
+
+/**
+ * Browser voice demo. The caller speaks in a page instead of dialling, so there
+ * is no vendor payload and no signature - which is exactly why every field is
+ * still parsed here before it reaches the assistant or the CRM.
+ */
+export const voiceDemoSchema = z.discriminatedUnion("action", [
+  z.object({
+    action: z.literal("turn"),
+    callId: z.string().uuid(),
+    conversationId: z.string().uuid().nullable().optional(),
+    message: sanitizedString(1500).pipe(z.string().min(1, "Nothing was heard")),
+  }),
+  z.object({
+    action: z.literal("end"),
+    callId: z.string().uuid(),
+    conversationId: z.string().uuid().nullable().optional(),
+    durationSeconds: z
+      .number()
+      .int()
+      .min(0)
+      .max(60 * 60)
+      .default(0),
+  }),
+]);
+
 export const analyticsEventSchema = z.object({
   name: sanitizedString(80).pipe(z.string().min(1)),
   properties: z.record(z.string(), z.unknown()).default({}),

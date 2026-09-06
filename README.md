@@ -39,6 +39,17 @@ The database starts loaded with a realistic demo dataset — leads in every
 status, upcoming appointments, past calls with transcripts, and live
 conversations — so the dashboard is useful on first load rather than empty.
 
+### Talk to the AI phone agent
+
+[/demo/voice](http://localhost:3000/demo/voice) is a spoken demo that needs no
+vendor account, no API key and no phone number: the browser listens and speaks
+via the Web Speech API, and everything after that is the production path. A job
+booked by voice is a real appointment, and the call lands in the dashboard's
+Calls tab with a transcript, a summary and an outcome.
+
+Chrome or Edge to speak; any other browser falls back to typing. See
+[docs/VOICE.md](docs/VOICE.md).
+
 ## Prerequisites
 
 - **Node.js 20.9+** (Next.js 16 minimum; developed on 24)

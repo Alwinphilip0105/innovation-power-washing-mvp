@@ -95,6 +95,51 @@ A completed call that carries a transcript is replayed through the assistant, so
 the enquiry is captured as a lead instead of sitting in a transcript nobody
 reads.
 
+## The browser demo — `/demo/voice`
+
+A spoken demo that needs no vendor, no account and no phone number. The browser
+does the listening and the speaking; everything after that is the production
+path.
+
+```
+Web Speech API (browser)  →  POST /api/demo/voice  →  runAssistantTurn (channel: phone)
+     mic → text                                            ↓
+     text → speech        ←         reply             tools → CRM
+```
+
+| Piece | What it is |
+|---|---|
+| Speech in | `webkitSpeechRecognition`, wrapped in `lib/voice/browser-speech.ts` |
+| Speech out | `speechSynthesis`, same module |
+| Brain | Whatever `AI_PROVIDER` selects — the mock provider by default |
+| Transport | `POST /api/demo/voice`, `action: "turn"` per utterance and `action: "end"` to hang up |
+| CRM | `services/voice-demo.ts` — a real `calls` row with transcript, summary and outcome |
+
+The call appears in the dashboard's Calls tab exactly like a real one, under
+provider `browser-demo` so demo traffic is always separable from a vendor's.
+The caller id is a reserved-for-fiction number (555-01xx), because inventing a
+plausible one would attach demo calls to a real customer record.
+
+**A booking made in the demo is a real booking.** Same tools, same validation,
+same rows. The outcome written to the call record is derived from what actually
+landed in the database, never from the client or from the assistant's own
+account of the call: `booked` means an appointment row exists.
+
+### Turn-taking
+
+Recognition runs one utterance at a time rather than continuously. A
+continuously open mic transcribes the agent's own reply as if the caller had
+said it. The caller talks, the mic closes, the agent replies, the mic reopens.
+
+### Limits worth stating out loud in a demo
+
+- Recognition is Chromium-only, and Chrome sends the audio to Google to
+  transcribe it. Any other browser falls back to typing, which the page says.
+- The mic needs HTTPS or localhost.
+- Nobody is dialling anything. This demonstrates the agent, not the phone
+  system — barge-in, latency under real network conditions, and call transfer
+  are all properties of the vendor layer that is still a declared seat.
+
 ## Implementing a vendor
 
 1. Implement the four `VoiceProvider` methods in `lib/voice/provider.ts`.

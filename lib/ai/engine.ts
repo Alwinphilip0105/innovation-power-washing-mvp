@@ -32,7 +32,8 @@ export interface AssistantTurnResult {
   toolsUsed: string[];
 }
 
-function toAiMessages(messages: Message[]): AiMessage[] {
+/** Conversation history in the shape a provider consumes. System notes are internal. */
+export function toAiMessages(messages: Message[]): AiMessage[] {
   return messages
     .filter((message) => message.sender !== "system")
     .map((message) => ({

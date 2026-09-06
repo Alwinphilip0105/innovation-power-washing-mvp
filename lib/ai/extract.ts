@@ -19,9 +19,50 @@ const EMAIL_PATTERN = /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/gi;
 const ZIP_PATTERN = /\b(0[6-9]\d{3}|1\d{4})\b/g;
 const STREET_PATTERN = new RegExp(`\\b\\d{1,6}\\s+[A-Za-z0-9'.\\-]+(?:\\s+[A-Za-z0-9'.\\-]+){0,3}\\s+${STREET_SUFFIX}\\b`, "i");
 
+/**
+ * Case-insensitive on the lead-in only. "My name is Dana" has to match as
+ * readily as "my name is Dana" - speech recognition capitalizes the start of
+ * every sentence - while the name itself is still required to be capitalized,
+ * checked after the match so "this is great" is not read as a name.
+ */
 const NAME_INTRO_PATTERN =
-  /(?:my name is|this is|i am|i'm|it's|its|name:)\s+([A-Z][a-zA-Z'-]+(?:\s+[A-Z][a-zA-Z'-]+)?)/;
+  /(?:my name is|this is|i am|i'm|it's|its|name:)\s+([A-Za-z][a-zA-Z'-]+(?:\s+[A-Za-z][a-zA-Z'-]+)?)/i;
 const BARE_NAME_PATTERN = /^([A-Z][a-zA-Z'-]+)(?:\s+([A-Z][a-zA-Z'-]+))?\s*[,.]/;
+
+/**
+ * Openers that look exactly like a bare name to the pattern above.
+ *
+ * "Hi, I'd like a house wash." would otherwise capture a customer called Hi.
+ * People open a phone call with one of these almost every time, so a greeting
+ * is stripped before a bare name is read, and rejected if it survives.
+ */
+const GREETING_PREFIX_PATTERN =
+  /^(?:hi|hey|hello|yeah|yes|yep|no|nope|ok|okay|sure|thanks|thank you|please|sorry|well|so|good (?:morning|afternoon|evening))\b[\s,.!-]*/i;
+
+const NON_NAME_WORDS = new Set([
+  "hi",
+  "hey",
+  "hello",
+  "yeah",
+  "yes",
+  "yep",
+  "no",
+  "nope",
+  "ok",
+  "okay",
+  "sure",
+  "thanks",
+  "please",
+  "sorry",
+  "well",
+  "so",
+  "morning",
+  "afternoon",
+  "evening",
+  "actually",
+  "um",
+  "uh",
+]);
 
 const HUMAN_REQUEST = [
   "speak to a human",
@@ -194,12 +235,17 @@ export function extractName(text: string): { firstName: string | null; lastName:
   const intro = NAME_INTRO_PATTERN.exec(text);
   if (intro) {
     const [first, last] = intro[1].split(/\s+/);
-    return { firstName: first ?? null, lastName: last ?? null };
+    const capitalized = Boolean(first) && /^[A-Z]/.test(first);
+    if (capitalized && !NON_NAME_WORDS.has(first.toLowerCase())) {
+      return { firstName: first, lastName: last && /^[A-Z]/.test(last) ? last : null };
+    }
   }
 
   for (const line of text.split("\n")) {
-    const bare = BARE_NAME_PATTERN.exec(line.trim());
-    if (bare) return { firstName: bare[1] ?? null, lastName: bare[2] ?? null };
+    const bare = BARE_NAME_PATTERN.exec(line.trim().replace(GREETING_PREFIX_PATTERN, ""));
+    if (!bare) continue;
+    if (NON_NAME_WORDS.has((bare[1] ?? "").toLowerCase())) continue;
+    return { firstName: bare[1] ?? null, lastName: bare[2] ?? null };
   }
 
   return { firstName: null, lastName: null };

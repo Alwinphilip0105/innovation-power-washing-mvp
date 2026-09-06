@@ -77,5 +77,10 @@ test("the health endpoint reports wired providers without leaking secrets", asyn
   const body = await response.json();
   expect(body.data.providers.ai).toBe("mock");
   expect(body.data.dataStore.kind).toBe("memory");
-  expect(JSON.stringify(body)).not.toMatch(/sk-|service_role/i);
+  // Naming an unset variable is the point of the warnings; leaking its value is
+  // what must never happen. Match on secret shapes, not on the variable name.
+  const serialized = JSON.stringify(body);
+  expect(serialized).not.toMatch(/sk-[A-Za-z0-9_-]{10,}/);
+  expect(serialized).not.toMatch(/eyJ[A-Za-z0-9_-]{10,}\./); // a JWT, e.g. a Supabase key
+  expect(serialized).not.toMatch(/https:\/\/[a-z0-9]+\.supabase\.co/i);
 });

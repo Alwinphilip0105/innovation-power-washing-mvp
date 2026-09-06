@@ -264,13 +264,16 @@ export class MockAIProvider implements AIProvider {
 
   async summarizeConversation(messages: AiMessage[], context: ToolContext): Promise<string> {
     const state = deriveState(messages, context.business, context.services);
-    const parts = [
+    // Two sentences, so the trailing note does not run into the first one.
+    const enquiry = [
       state.firstName ? `${state.firstName}${state.lastName ? ` ${state.lastName}` : ""}` : "Caller",
       state.service ? `asked about ${state.service.name}` : "made a general enquiry",
       state.town ? `in ${state.town}` : null,
-      state.phone ? `Phone on file.` : `No phone captured.`,
-    ].filter(Boolean);
-    return `${parts.join(" ")}.`;
+    ]
+      .filter(Boolean)
+      .join(" ");
+
+    return `${enquiry}. ${state.phone ? "Phone on file." : "No phone captured."}`;
   }
 }
 
