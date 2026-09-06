@@ -163,3 +163,13 @@ which vendor is in use.
   standard practice and other states differ.
 - Call recordings and transcripts are customer data: apply a retention policy
   rather than keeping them forever.
+
+## Permissions-Policy
+
+`vercel.json` sends `microphone=(self)`. It previously sent `microphone=()`,
+which disables the microphone for the page itself and silently breaks
+`/demo/voice` on the deployment — the browser refuses the request before any
+permission prompt appears. Camera and geolocation stay fully disabled.
+
+A static host does not apply `vercel.json`, so a GitHub Pages copy of the demo
+was never affected by this.

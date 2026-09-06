@@ -31,7 +31,7 @@ chat box.
 Follow `docs/DEPLOYMENT.md`. Confirm it works before wiring Pages to it:
 
 ```bash
-curl https://<your-deployment>/api/health
+curl https://innovation-power-washing-mvp.vercel.app/api/health
 ```
 
 Expect `"status": "ok"`. If it says `degraded`, fix that first — the `warnings`
@@ -58,15 +58,15 @@ ever issued and a spoofed origin gains no session.
 
 ### 3. Point the repository at that deployment
 
-In **Settings → Secrets and variables → Actions → Variables**, add:
+The workflow already defaults to
+`https://innovation-power-washing-mvp.vercel.app`, so nothing is needed here
+unless that changes. To override, set repository variables under
+**Settings → Secrets and variables → Actions → Variables**:
 
 | Variable | Value |
 | --- | --- |
 | `API_BASE_URL` | `https://<your-deployment>` — origin only, no trailing path |
-| `PAGES_URL` | *(optional)* only if serving from a custom domain |
-
-The workflow fails with an explicit message if `API_BASE_URL` is missing, rather
-than shipping a site whose forms are quietly dead.
+| `PAGES_URL` | only if serving from a custom domain |
 
 ### 4. Turn Pages on
 

@@ -54,21 +54,18 @@ jobs:
 
       - run: npm ci
 
-      # Guards the whole point of this deploy: without an API origin the
-      # exported chat, booking form and voice demo would load and then fail.
-      - name: Check the API origin is configured
+      # Which deployment answers this site's API calls. Defaults to the
+      # current one; set the API_BASE_URL repository variable to point the
+      # exported site somewhere else without touching this file.
+      - name: Resolve the API origin
+        id: api
         run: |
-          if [ -z '${{ vars.API_BASE_URL }}' ]; then
-            echo "::error::Repository variable API_BASE_URL is not set."
-            echo "Set it under Settings > Secrets and variables > Actions > Variables"
-            echo "to the origin of the deployment that answers this site's API calls,"
-            echo "e.g. https://innovation-power-washing-mvp.vercel.app"
-            exit 1
-          fi
+          url='${{ vars.API_BASE_URL }}'
+          echo "url=${url:-https://innovation-power-washing-mvp.vercel.app}" >> "$GITHUB_OUTPUT"
 
       - name: Build the static export
         env:
-          NEXT_PUBLIC_API_BASE_URL: ${{ vars.API_BASE_URL }}
+          NEXT_PUBLIC_API_BASE_URL: ${{ steps.api.outputs.url }}
           NEXT_PUBLIC_APP_URL: ${{ steps.site.outputs.app_url }}
           PAGES_BASE_PATH: ${{ steps.site.outputs.base_path }}
         run: npm run build:static
