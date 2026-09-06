@@ -92,6 +92,23 @@ test("the form rejects a bad phone number without losing what was typed", async 
   await expect(page.getByLabel("First name")).toHaveValue("Testcase");
 });
 
+test("sign-in is reachable from the top bar with the demo account filled in", async ({ page }) => {
+  await page.goto("/");
+
+  // Moved out of the footer: on a demo, getting into the dashboard should not
+  // require scrolling to the bottom of the page to find the way in.
+  await page.getByRole("link", { name: /staff login/i }).click();
+  await expect(page).toHaveURL(/\/login/);
+
+  // Prefilled whenever the dev sign-in is in use, so the demo is one click.
+  // A deployment holding real data runs Supabase Auth, where nothing is filled.
+  await expect(page.getByLabel("Email")).toHaveValue("owner@innovationpowerwashing.com");
+  await expect(page.getByLabel("Password")).toHaveValue("powerwash2026");
+
+  await page.getByRole("button", { name: /sign in/i }).click();
+  await expect(page.getByRole("heading", { name: /today at a glance/i })).toBeVisible();
+});
+
 test("the owner can sign in and see a live dashboard", async ({ page }) => {
   await signIn(page);
 

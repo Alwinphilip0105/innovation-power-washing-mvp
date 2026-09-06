@@ -8,6 +8,7 @@ import { Menu, Phone, X } from "lucide-react";
 import { Logo } from "@/components/marketing/logo";
 import { buttonClasses } from "@/components/ui/button";
 import { DemoCallButton } from "@/components/demo/demo-call";
+import { serverHref } from "@/lib/api/client";
 import { cn } from "@/lib/utils/cn";
 
 const NAV = [
@@ -36,7 +37,19 @@ export function SiteHeader({
       <div className="bg-ink-900 text-white">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-x-6 gap-y-1 px-4 py-2 text-xs sm:text-sm">
           <p className="font-semibold">{hoursNote}</p>
-          <p className="text-white/80">Fully insured &middot; Pompton Lakes, Wayne &amp; Pompton Wayne, NJ</p>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+            <p className="text-white/80">
+              Fully insured &middot; Pompton Lakes, Wayne &amp; Pompton Wayne, NJ
+            </p>
+            {/* Sign-in is server-rendered, so on the static build it lives on
+                the full deployment rather than on this host. */}
+            <a
+              href={serverHref("/login")}
+              className="whitespace-nowrap font-semibold text-white underline-offset-2 hover:underline"
+            >
+              Staff Login
+            </a>
+          </div>
         </div>
       </div>
 

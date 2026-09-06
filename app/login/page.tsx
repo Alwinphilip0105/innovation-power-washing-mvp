@@ -7,7 +7,6 @@ import { Logo } from "@/components/marketing/logo";
 import { Alert } from "@/components/ui/alert";
 import { devCredentials, getAuthContext, supabaseAuthConfigured } from "@/lib/auth";
 import { bootstrap } from "@/lib/bootstrap";
-import { isProduction } from "@/lib/env";
 
 export const metadata: Metadata = {
   title: "Staff Login",
@@ -24,9 +23,13 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
   const nextParam = typeof params.next === "string" ? params.next : "/dashboard";
   const next = nextParam.startsWith("/") && !nextParam.startsWith("//") ? nextParam : "/dashboard";
 
-  // In development, prefill the seeded credentials so the demo is one click.
+  // Prefilled whenever the dev sign-in is the one in use - including on a
+  // deployed demo. The gate is the auth provider, not NODE_ENV: `dev` auth is
+  // by definition a seeded demo account, and these credentials are published
+  // in the README. A deployment holding real data runs Supabase Auth instead,
+  // and nothing is prefilled there.
   const usingSupabase = supabaseAuthConfigured();
-  const demo = !usingSupabase && !isProduction ? devCredentials() : null;
+  const demo = usingSupabase ? null : devCredentials();
 
   return (
     <div className="flex min-h-screen flex-col bg-surface-muted">
@@ -41,7 +44,7 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
             <p className="mt-1 text-sm text-body-muted">
               {usingSupabase
                 ? "Use your Supabase account for this business."
-                : "Development sign-in - the credentials below are pre-filled."}
+                : "Demo sign-in - the credentials are already filled in, just press Sign in."}
             </p>
 
             <div className="mt-6">
